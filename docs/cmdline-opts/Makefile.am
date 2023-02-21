@@ -25,6 +25,7 @@
 AUTOMAKE_OPTIONS = foreign no-dependencies
 
 MANPAGE = $(top_builddir)/docs/curl.1
+GLOBGEN = $(builddir)/globals.gen
 
 include Makefile.inc
 
@@ -37,5 +38,8 @@ GN_ = $(GN_0)
 
 all: $(MANPAGE)
 
-$(MANPAGE): $(DPAGES) $(OTHERPAGES) Makefile.inc
+$(GLOBGEN): $(DPAGES) gen.pl
+	$(GEN)(rm -f $(GLOBGEN) && cd $(srcdir) && @PERL@ ./gen.pl globals $(DPAGES) >$(GLOBGEN))
+
+$(MANPAGE): $(DPAGES) $(OTHERPAGES) Makefile.inc $(GLOBGEN) gen.pl
 	$(GEN)(rm -f $(MANPAGE) && cd $(srcdir) && @PERL@ ./gen.pl mainpage $(DPAGES) > $(builddir)/manpage.tmp && mv $(builddir)/manpage.tmp $(MANPAGE))
