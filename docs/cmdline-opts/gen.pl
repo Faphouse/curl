@@ -191,6 +191,8 @@ sub added {
     }
 }
 
+my @globalopts;
+
 sub single {
     my ($f, $standalone)=@_;
     open(F, "<:crlf", "$f") ||
@@ -520,7 +522,18 @@ sub header {
     while(<F>) {
         s/%DATE/$date/g;
         s/%VERSION/$version/g;
-        push @d, $_;
+        my $o = $_;
+        if($o =~ s/%include \"([^\"]*)\"//) {
+            my $i = $1;
+            my $r = $o; # the remainder
+            open(I, "<$i");
+            while(<I>) {
+                push @inc, $_;
+            }
+            close(I);
+            $o = join("", @inc).$r;
+        }
+        push @d, $o;
     }
     close(F);
     printdesc(@d);
@@ -629,6 +642,34 @@ sub listcats {
     }
 }
 
+sub listglobals {
+    my (@files) = @_;
+    # Find all global options and output them
+    foreach my $f (sort @files) {
+        open(F, "<:crlf", "$f") ||
+            next;
+        my $long;
+        while(<F>) {
+            if(/^Long: *(.*)/i) {
+                $long=$1;
+            }
+            elsif(/^Scope: global/i) {
+                push @globalopts, $long;
+                last;
+            }
+            elsif(/^---/) {
+                last;
+            }
+        }
+        close(F);
+    }
+    return $ret if($ret);
+    for my $e (0 .. $#globalopts) {
+        printf "%s--%s",  $e?($globalopts[$e+1] ? ", " : " and "):"",
+            $globalopts[$e],;
+    }
+}
+
 sub mainpage {
     my (@files) = @_;
     my $ret;
@@ -688,8 +729,12 @@ sub getargs {
         listcats();
         return;
     }
+    elsif($f eq "globals") {
+        listglobals(@s);
+        return;
+    }
 
-    print "Usage: gen.pl <mainpage/listhelp/single FILE/protos/listcats> [files]\n";
+    print "Usage: gen.pl <mainpage/listhelp/single FILE/protos/listcats/globals> [files]\n";
 }
 
 #------------------------------------------------------------------------
